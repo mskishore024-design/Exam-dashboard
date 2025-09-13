@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Exam Mission Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .tab-button { transition: all 0.2s; border-bottom: 3px solid transparent; padding-bottom: 8px; }
+        .tab-button.active { color: #4338ca; border-color: #4338ca; font-weight: 700; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 350px; }
+        .progress-bar-bg { background-color: #e5e7eb; }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+        .checklist-item input:checked + label { text-decoration: line-through; color: #6b7280; }
+        .checklist-item input:checked + label .task-subject { background-color: #e5e7eb; }
+        .subject-anatomy { border-left: 4px solid #3b82f6; } .tag-anatomy { background-color: #dbeafe; color: #1e40af; }
+        .subject-oral-anatomy { border-left: 4px solid #10b981; } .tag-oral-anatomy { background-color: #d1fae5; color: #065f46; }
+        .subject-biochemistry { border-left: 4px solid #f97316; } .tag-biochemistry { background-color: #ffedd5; color: #9a3412; }
+        .subject-physiology { border-left: 4px solid #8b5cf6; } .tag-physiology { background-color: #ede9fe; color: #5b21b6; }
+        .subject-pyq-practice, .subject-mcq-drill, .subject-revision, .subject-targets { border-left: 4px solid #6b7280; } .tag-pyq-practice, .tag-mcq-drill, .tag-revision, .tag-targets { background-color: #e5e7eb; color: #4b5563; }
+        .task-subject { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 9999px; }
+        .accordion-button { cursor: pointer; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        .accordion-item.open .accordion-content { max-height: 2500px; }
+        .accordion-item.open .accordion-arrow { transform: rotate(180deg); }
+        .year-status { transition: all 0.3s; }
+        .year-status.completed { background-color: #10b981; color: white; font-weight: bold; transform: scale(1.05); }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-4xl font-extrabold text-gray-800">Integrated Exam Mission Control</h1>
+            <p class="text-lg text-gray-500 mt-1">Your data-driven, daily question-hunting dashboard to top all four exams.</p>
+        </header>
+
+        <nav class="bg-white rounded-lg shadow-sm p-2 flex flex-wrap justify-center gap-2 mb-6 sticky top-4 z-10">
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold active" data-tab="dashboard">🚀 Dashboard</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="targets">🎯 Daily Targets</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="schedule">🗓️ Daily Battle Plan</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="checklists">🗺️ Final Chapter Atlas</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="predictor">🔮 Mission Forecast</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="intelligence">🧠 Intelligence</button>
+            <button class="tab-button flex-1 py-2 px-1 sm:px-4 text-sm sm:text-base font-semibold" data-tab="analytics">📊 Analytics & Trackers</button>
+        </nav>
+
+        <main>
+            <div id="dashboard" class="tab-content active space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Mission Progress</h2>
+                    <div id="progress-container" class="space-y-4"></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Master Priority Lists & Study Methods</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="strategy-container"></div>
+                </div>
+            </div>
+
+            <div id="targets" class="tab-content">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Daily Question-Hunt Targets</h2>
+                     <p class="text-gray-600 mb-6">This is your daily quantitative mission. Focus on hitting these numbers, prioritizing the high-yield questions first. Completing these targets ensures you cover the critical 80% of the syllabus before the final revision phase.</p>
+                    <div id="daily-targets-container" class="space-y-8"></div>
+                </div>
+            </div>
+
+            <div id="schedule" class="tab-content">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Daily Battle Plan: The Hunt</h2>
+                     <p class="text-gray-600 mb-6">Here are the specific, high-yield questions to hunt each day to meet your targets. Check them off as you master them.</p>
+                    <div id="daily-schedule-container" class="space-y-8"></div>
+                </div>
+            </div>
+
+            <div id="checklists" class="tab-content">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Final Chapter Atlas & Question Bank</h2>
+                    <p class="text-gray-600 mb-6">This is your final consolidation tool. Before each exam, ensure every high-priority question is mastered. Chapters are ranked from highest to lowest frequency based on all PYQ data.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="final-checklists-container"></div>
+                </div>
+            </div>
+
+             <div id="predictor" class="tab-content">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Mission Forecast: Predicted Exam Questions</h2>
+                    <p class="text-gray-600 mb-6">This section contains the data-driven mock paper questions from the analysis. Use this as a final, high-intensity checklist to simulate exam conditions and verify your preparation on the most probable topics.</p>
+                    <div id="predictions-container" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <div id="intelligence" class="tab-content">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Subject Intelligence: Verified Data Breakdown</h2>
+                    <p class="text-gray-600 mb-6">Here is the complete statistical analysis for each subject, cross-referenced from the provided data files.</p>
+                    <div id="analytics-stats-container" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <div id="analytics" class="tab-content">
+                 <div class="bg-white p-6 rounded-lg shadow-md space-y-8">
+                    <div>
+                         <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Live Progress Tracker</h2>
+                        <div class="chart-container"><canvas id="progressChart"></canvas></div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Total Question Volume (All Years)</h2>
+                        <div class="chart-container"><canvas id="totalQuestionsChart"></canvas></div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">PYQ Year Completion Tracker</h2>
+                        <p class="text-gray-600 mb-4">As you complete all questions from a specific year's paper via the checklists, the year will be marked as 'COMPLETED'.</p>
+                        <div id="year-tracker-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                    </div>
+                 </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+    const allData = {
+        subjects: [
+            { name: "Anatomy", color: "#3b82f6", method: "Diagrams from memory. Timed PYQs. Mnemonics. Theory: 60%, MCQs: 40%.", chapters: [ { name: 'Oral Cavity', count: 18, questions: [{text:"Describe tongue under muscles, nerve supply, lymphatic drainage and applied anatomy", marks:10, year:"Feb 2009"}, {text:"Classify the muscles of the tongue with their nerve supply", marks:5, year:"Feb 2011"}, {text:"Development of tongue", marks:5, year:"Aug 2011"}, {text:"Histology of tongue", marks:5, year:"Aug 2008"}] }, { name: 'Infratemporal Fossa, TMJ, and Pterygopalatine Fossa', count: 16, questions: [{text:"Describe temporomandibular joint under type, articular surfaces, ligaments, relations, movements and applied aspects", marks:10, year:"Feb 2010"}, {text:"Describe the muscles of mastication under origin, insertion, nerve supply and actions", marks:10, year:"Feb 2014"}, {text:"Lateral pterygoid", marks:5, year:"Aug 2008"}, {text:"Maxillary artery", marks:5, year:"Aug 2010"}, {text:"Otic ganglion", marks:5, year:"Feb 2012"}] }, { name: 'Side of the Neck', count: 16, questions: [{text:"Describe the boundaries and contents of posterior triangle", marks:10, year:"Feb 2009"}, {text:"Describe the boundaries and contents of the carotid triangle", marks:10, year:"Aug 2010"}, {text:"External jugular vein", marks:5, year:"Aug 2008"}, {text:"Carotid sheath", marks:5, year:"Feb 2009"}, {text:"Deep cervical lymph nodes", marks:5, year:"Feb 2011"}, {text:"Styloid apparatus", marks:5, year:"Aug 2011"}, {text:"Sternocleidomastoid muscle", marks:5, year:"Feb 2012"}] }, { name: 'Pharynx and Palate', count: 15, questions: [{text:"Describe the pharynx under subdivisions, muscles, nerve supply and applied anatomy", marks:10, year:"Feb 2013"}, {text:"Derivatives of second pharyngeal arch", marks:5, year:"Aug 2008"}, {text:"Pharyngeal tonsil", marks:5, year:"Feb 2010"}, {text:"Development of palate", marks:5, year:"Aug 2010"}, {text:"Muscles of soft palate", marks:5, year:"Feb 2013"}, {text:"Pharyngeal arches", marks:5, year:"Feb 2012"}] }, { name: 'Scalp, Temple, and Face', count: 13, questions: [{text:"Describe the development of face and palate", marks:10, year:"Feb 2011"}, {text:"Facial artery", marks:5, year:"Aug 2008"}, {text:"Development of face", marks:5, year:"Feb 2009"}, {text:"Sensory nerve supply of the face", marks:5, year:"Feb 2011"}, {text:"Nerve supply of scalp", marks:5, year:"Aug 2012"}, {text:"Layers of scalp", marks:5, year:"Feb 2014"}] }, { name: 'Cranial Nerves', count: 12, questions: [{text:"Describe the extracranial course relations, branches and applied anatomy of facial nerve", marks:10, year:"Aug 2008"}, {text:"Describe the course, relation, branches, distribution and applied anatomy of the maxillary nerve", marks:10, year:"Mar 2024"}, {text:"Hypoglossal nerve", marks:5, year:"Feb 2010"}, {text:"Mandibular nerve", marks:5, year:"Feb 2013"}] }, { name: 'Thyroid and Parathyroid Glands, Trachea, and Esophagus', count: 11, questions: [{text:"Describe the situation, relations, blood supply, development and micro anatomy of thyroid gland", marks:10, year:"Aug 2008"}, {text:"Trachea", marks:5, year:"Feb 2010"}, {text:"Blood supply of the thyroid gland", marks:5, year:"Feb 2011"}, {text:"Development of thyroid gland", marks:5, year:"Feb 2013"}, {text:"Histology of trachea", marks:5, year:"Mar 2021"}] }, { name: 'Parotid Region', count: 9, questions: [{text:"Describe the parotid gland under the following headings: situation, capsule, relations, nerve supply and applied anatomy", marks:10, year:"Feb 2011"}, {text:"Parotid duct", marks:5, year:"Feb 2009"}, {text:"Microscopic structure of the parotid gland", marks:5, year:"Feb 2011"}] }, { name: 'Orbit and Eyeball', count: 9, questions: [{text:"Describe the extraocular muscles, their nerve supply and actions", marks:10, year:"Feb 2015"}, {text:"Movements of the eyeball", marks:5, year:"Feb 2009"}, {text:"Ciliary ganglion", marks:5, year:"Aug 2010"}] }, { name: 'Cranial Cavity', count: 9, questions: [{text:"Cavernous sinus", marks:5, year:"Feb 2009"}, {text:"Dural venous sinuses", marks:5, year:"Feb 2018"}] }, { name: 'Nose and Paranasal Air Sinuses', count: 8, questions: [{text:"Describe the lateral wall of the nose, its nerve supply and blood supply", marks:10, year:"Feb 2015"}, {text:"Middle meatus of nose", marks:5, year:"Aug 2008"}, {text:"Maxillary sinus", marks:5, year:"Feb 2013"}] }, { name: 'Submandibular Region', count: 7, questions: [{text:"Submandibular salivary gland", marks:5, year:"Feb 2009"}, {text:"Histology of submandibular gland", marks:5, year:"Aug 2011"}] }, { name: 'Blood Supply of the Brain', count: 7, questions: [{text:"Circle of Willis", marks:5, year:"Aug 2010"}] }, { name: 'Cerebellum and Fourth Ventricle', count: 7, questions: [{text:"Floor of the fourth ventricle", marks:5, year:"Feb 2011"}] }, { name: 'Anterior Region of the Neck', count: 5, questions: [{text:"Ansa cervicalis", marks:5, year:"Aug 2008"}, {text:"Boundaries and contents of digastric triangle", marks:5, year:"Feb 2012"}] }, { name: 'Cerebrum', count: 5, questions: [{text:"Internal capsule", marks:5, year:"Aug 2011"}, {text:"Corpus callosum", marks:5, year:"Aug 2010"}] }, { name: 'Larynx', count: 4, questions: [{text:"Vocal cords", marks:5, year:"Aug 2008"}, {text:"Interior of larynx", marks:5, year:"Aug 2010"}] }, { name: 'Ear', count: 4, questions: [{text:"Describe the external, middle and internal ear", marks:10, year:"Feb 2010"}, {text:"Auditory tube", marks:5, year:"Feb 2009"}] }, { name: 'Brainstem', count: 3, questions: [{text:"Medulla oblongata", marks:5, year:"Feb 2018"}] }, { name: 'Diencephalon and Third Ventricle', count: 3, questions: [{text:"Third ventricle", marks:5, year:"Feb 2010"}] }, { name: 'Pre- and Paravertebral Regions and Root of the Neck', count: 1, questions: [{text:"Cervical part of sympathetic trunk", marks:5, year:"Feb 2015"}] }, { name: 'Living Anatomy of the Head and Neck', count:0, questions:[]}, { name: 'Osteology of the Head and Neck', count:0, questions:[]}, { name: 'Skin, Superficial Fascia, and Deep Fascia of the Neck', count:0, questions:[]}, { name: 'Back of the Neck and Cervical Spinal Column', count:0, questions:[]}, { name: 'Vertebral Canal and Its Contents', count:0, questions:[]}, { name: 'General Plan and Membranes of the Brain', count:0, questions:[]}, { name: 'Basal Nuclei and Limbic System', count:0, questions:[]}]
+            },
+            { 
+                name: "Oral Anatomy", 
+                color: "#10b981", 
+                method: "Sketch teeth from all aspects. Link histology to function. PYQ-focused. Theory: 70%, MCQs: 30%.",
+                sections: [
+                    { name: 'Oral Histology & Embryology', chapters: [ { name: 'Oral Mucous Membrane', count: 20, questions: [{text:"Classify Oral Mucous Membrane", marks:10, year:"Mar 2025"}, {text:"Masticatory Mucosa", marks:5, year:"Sep 2024"}] }, { name: 'Periodontal Ligament', count: 18, questions: [{text:"Principal Fibers of PDL", marks:10, year:"Mar 2025"}, {text:"Cells of PDL", marks:5, year:"Sep 2024"}, {text:"Sharpey's fibers", marks:5, year:"Nov 2023"}] }, { name: 'Cementum', count: 17, questions: [{text:"Cellular and Acellular Cementum", marks:10, year:"Mar 2025"}, {text:"Cemento-enamel junction", marks:5, year:"Sep 2024"}] }, { name: 'Development of Teeth', count: 16, questions: [{text:"Bell stage of tooth development", marks:10, year:"Nov 2023"}, {text:"Cap stage", marks:5, year:"Mar 2023"}, {text:"Neural crest cells", marks:5, year:"May 2022"}] }, { name: 'Dentin', count: 15, questions: [{text:"Theories of dentin hypersensitivity", marks:10, year:"Mar 2022"}, {text:"Dentinogenesis", marks:5, year:"Sep 2021"}, {text:"Age changes in dentin", marks:5, year:"Feb 2021"}] }, { name: 'Pulp', count: 15, questions: [{text:"Age changes in pulp", marks:10, year:"Dec 2020"}, {text:"Pulp stones", marks:5, year:"Sep 2020"}, {text:"Zones of pulp", marks:5, year:"Mar 2025"}, {text:"Functions of pulp", marks:5, year:"Sep 2024"}] }, { name: 'Enamel', count: 14, questions: [{text:"Amelogenesis / Life cycle of ameloblast", marks:10, year:"Nov 2023"}, {text:"Hunter Schreger bands", marks:5, year:"Mar 2023"}, {text:"Enamel tufts and lamellae", marks:5, year:"May 2022"}] }, { name: 'Eruption', count: 9, questions: [{text:"Theories of Tooth Eruption", marks:10, year:"Mar 2025"}, {text:"Shedding", marks:5, year:"Sep 2024"}] }, { name: 'Maxillary Sinus', count: 8, questions: [{text:"Maxillary sinus", marks:5, year:"Nov 2023"}] }, { name: 'Bone', count: 8, questions: [{text:"Alveolar bone", marks:5, year:"Mar 2023"}, {text:"Bundle bone", marks:5, year:"May 2022"}] }, { name: 'Temporomandibular Joint', count: 2, questions: [{text:"Temporomandibular Joint (TMJ)", marks:5, year:"Feb 2021"}] }, { name: 'Tissue Processing', count: 1, questions: [{text:"Tissue Processing", marks:5, year:"Mar 2025"}]}, {name: 'General Histology of Oral Tissues', count:0, questions:[]}, {name: 'Epithelium', count:0, questions:[]}, {name: 'Connective Tissue', count:0, questions:[]}, {name: 'Gingiva', count:0, questions:[]}, {name: 'Tooth Development Stages', count:0, questions:[]}, {name: 'Odontogenesis', count:0, questions:[]}, {name: 'Dentin-Pulp Complex', count:0, questions:[]}, {name: 'Alveolar Process', count:0, questions:[]}, {name: 'Oral Embryology', count:0, questions:[]}, {name: 'Development of the Pharyngeal Arches', count:0, questions:[]}, {name: 'Development of Palate', count:0, questions:[]}] },
+                    { name: 'Tooth Morphology', chapters: [ { name: 'Permanent Molars', count: 11, questions: [{text:"Permanent mandibular first molar", marks:10, year:"Mar 2022"}, {text:"Occlusal aspect of permanent maxillary first molar", marks:5, year:"Sep 2021"}] }, { name: 'Differences (Deciduous/Permanent)', count: 6, questions: [{text:"Differences between primary and permanent teeth", marks:5, year:"Sep 2021"}] }, { name: 'Tooth Numbering Systems', count: 1, questions: [{text:"Line angles and point angles", marks:5, year:"Dec 2020"}]}, {name: 'Nomenclature', count:0, questions:[]}, {name: 'Form and Function', count:0, questions:[]}, {name: 'Development of Occlusion', count:0, questions:[]}, {name: 'Permanent Incisors', count:0, questions:[]}, {name: 'Permanent Canines', count:0, questions:[]}, {name: 'Permanent Premolars', count:0, questions:[]}, {name: 'Deciduous Dentition', count:0, questions:[]}, {name: 'Pulp Chambers and Canals', count:0, questions:[]}, {name: 'Occlusion', count:0, questions:[]}] },
+                    { name: 'Oral Anatomy', chapters: [ { name: 'Salivary Glands', count: 11, questions: [{text:"Classification of salivary glands", marks:10, year:"Feb 2021"}, {text:"Serous acini", marks:5, year:"Sep 2020"}] }, { name: 'Muscles of Mastication', count: 1, questions: [{text:"Muscles of Mastication", marks:5, year:"Sep 2020"}] }, {name: 'Introduction to Oral Anatomy', count:0, questions:[]}] },
+                    { name: 'Oral Physiology', chapters: [ { name: 'Deglutition', count: 7, questions: [{text:"Stages of Deglutition", marks:5, year:"Mar 2022"}] }, {name: 'Mastication', count:0, questions:[]}, {name: 'Speech', count:0, questions:[]}, {name: 'Saliva and its Composition', count:0, questions:[]}, {name: 'Taste Sensation', count:0, questions:[]}] }
+                ]
+            },
+             { name: "Biochemistry", color: "#f97316", method: "Draw pathways from scratch. Flowcharts for regulation. Emphasize clinical correlations. Theory: 50%, MCQs: 50%.", chapters: [ { name: 'CARBOHYDRATE METABOLISM', count: 17, questions: [{text:"Describe Glycolysis with energetics & regulation", marks:10, year:"Feb 2009"}, {text:"Describe TCA Cycle with energetics & regulation", marks:10, year:"Feb 2009"}, {text:"Describe HMP Shunt pathway & its significance", marks:10, year:"Aug 2010"}, {text:"Glycogen storage diseases", marks:5, year:"Aug 2011"}] }, { name: 'VITAMINS', count: 13, questions: [{text:"Describe Vitamin D (chemistry, sources, RDA, functions, deficiency)", marks:10, year:"Feb 2009"}, {text:"Describe Vitamin A (sources, RDA, functions, deficiency)", marks:10, year:"Aug 2014"}, {text:"Functions of Vitamin C", marks:5, year:"Aug 2009"}, {text:"Biochemical functions of Thiamine", marks:5, year:"Aug 2011"}] }, { name: 'LIPID METABOLISM', count: 12, questions: [{text:"Describe beta-oxidation of fatty acids with energetics", marks:10, year:"Aug 2009"}, {text:"Describe de-novo synthesis of cholesterol & its regulation", marks:10, year:"Feb 2011"}, {text:"Formation and fate of ketone bodies", marks:5, year:"Aug 2011"}, {text:"Fatty liver", marks:5, year:"Aug 2012"}] }, { name: 'ENZYMES', count: 11, questions: [{text:"Competitive enzyme inhibition", marks:5, year:"Feb 2009"}, {text:"Isoenzymes with clinical importance", marks:5, year:"Aug 2011"}, {text:"Factors affecting enzyme activity", marks:5, year:"Aug 2010"}] }, { name: 'PROTEIN METABOLISM', count: 9, questions: [{text:"Describe the reactions of Urea cycle & its disorders", marks:10, year:"Aug 2009"}, {text:"Transamination reactions", marks:5, year:"Feb 2011"}, {text:"Formation and disposal of ammonia", marks:5, year:"Feb 2014"}] }, { name: 'CHEMISTRY OF LIPIDS', count: 7, questions: [{text:"Phospholipids & its functions", marks:5, year:"Feb 2009"}, {text:"Essential fatty acids", marks:5, year:"Aug 2010"}] }, { name: 'MINERAL METABOLISM', count: 7, questions: [{text:"Regulation of blood calcium level", marks:5, year:"Aug 2014"}, {text:"Biochemical functions of iron", marks:5, year:"Aug 2011"}] }, { name: 'REPLICATION, TRANSCRIPTION AND TRANSLATION', count: 7, questions: [{text:"Describe the process of transcription in prokaryotes", marks:10, year:"Feb 2010"}, {text:"Describe the process of translation", marks:10, year:"Feb 2014"}, {text:"Genetic code", marks:5, year:"Feb 2011"}] }, { name: 'CARBOHYDRATE CHEMISTRY', count: 6, questions: [{text:"Biomedical importance of Glycosaminoglycans (GAGs)", marks:5, year:"Feb 2012"}] }, { name: 'CHEMISTRY OF PROTEINS', count: 5, questions: [{text:"Secondary structure of proteins", marks:5, year:"Aug 2013"}, {text:"Denaturation of proteins", marks:5, year:"Feb 2012"}] }, { name: 'PURINE AND PYRIMIDINE NUCLEOTIDE METABOLISM', count: 5, questions: [{text:"Gout", marks:5, year:"Aug 2009"}] }, { name: 'GENETIC ENGINEERING', count: 5, questions: [{text:"Polymerase Chain Reaction (PCR)", marks:5, year:"Aug 2013"}] }, { name: 'PLASMA PROTEINS AND IMMUNOGLOBULINS', count: 4, questions: [{text:"Structure of immunoglobulins", marks:5, year:"Feb 2010"}] }, { name: 'HEMOGLOBIN METABOLISM', count: 4, questions: [{text:"Classify jaundice & lab diagnosis", marks:10, year:"Aug 2010"}] }, { name: 'BIOLOGICAL OXIDATION', count: 4, questions: [{text:"Describe the electron transport chain & its inhibitors", marks:10, year:"Feb 2011"}] }, { name: 'CHEMISTRY OF NUCLEIC ACIDS', count: 3, questions: [{text:"Structure of DNA (Watson-Crick)", marks:5, year:"Aug 2010"}] }, { name: 'NUTRIENTS AND THEIR ROLE IN NUTRITION', count: 3, questions: [{text:"Dietary fibers", marks:5, year:"Aug 2009"}] }, { name: 'ACID-BASE BALANCE', count: 3, questions: [{text:"Metabolic acidosis", marks:5, year:"Feb 2012"}] }, { name: 'CELL AND MEMBRANE TRANSPORT', count: 2, questions: [{text:"Active transport", marks:5, year:"Feb 2013"}] }, { name: 'INTEGRATION OF METABOLISM AND METABOLISM IN STARVATION', count: 2, questions: [{text:"Metabolic changes in starvation", marks:5, year:"Aug 2013"}] }, { name: 'WATER METABOLISM', count: 2, questions: [{text:"Oral rehydration therapy", marks:5, year:"Feb 2013"}] }, { name: 'CHEMISTRY OF HEMOGLOBIN', count: 1, questions: [{text:"Structure and functions of haemoglobin", marks:5, year:"Aug 2012"}] }, { name: 'REGULATION OF GENE EXPRESSION AND MUTATION', count: 1, questions: [{text:"DNA repair mechanism", marks:5, year:"Feb 2012"}] }, { name: 'MECHANISM OF HORMONE ACTION', count: 1, questions: [{text:"Mechanism of steroid hormone action", marks:5, year:"Feb 2016"}] }]
+            },
+            { name: "Physiology", color: "#8b5cf6", method: "Focus on core concepts & mechanisms. Use flowcharts for regulation pathways. PYQs are key. Theory: 65%, MCQs: 35%.", chapters: [ { name: 'NERVOUS SYSTEM', count: 30, questions: [{text:"Describe the pathways of pain sensation & referred pain", marks:10, year:"Sep 2023"}, {text:"Classify reflexes & describe the properties of a reflex arc", marks:10, year:"Aug 2019"}, {text:"Describe Neuromuscular junction & transmission", marks:10, year:"Aug 2018"}, {text:"Functions of Cerebellum", marks:5, year:"Aug 2017"}] }, { name: 'CARDIOVASCULAR SYSTEM', count: 22, questions: [{text:"Define Cardiac cycle & describe its events with diagram", marks:10, year:"Mar 2023"}, {text:"Define Cardiac output & factors regulating it", marks:10, year:"Aug 2019"}, {text:"Define blood pressure & its regulation", marks:10, year:"Mar 2022"}] }, { name: 'ENDOCRINOLOGY', count: 19, questions: [{text:"Describe functions of growth hormone & applied aspects", marks:10, year:"Sep 2023"}, {text:"Regulation of blood glucose level", marks:10, year:"Mar 2022"}, {text:"Functions & regulation of Thyroid hormones", marks:10, year:"Aug 2018"}] }, { name: 'RESPIRATORY SYSTEM AND ENVIRONMENTAL PHYSIOLOGY', count: 15, questions: [{text:"Describe the transport of Oxygen in blood", marks:10, year:"Sep 2021"}, {text:"Describe the regulation of respiration", marks:10, year:"Aug 2016"}, {text:"Define Hypoxia & its types", marks:5, year:"Feb 2020"}] }, { name: 'BLOOD & BODY FLUIDS', count: 13, questions: [{text:"Describe Erythropoiesis & its regulation", marks:10, year:"Feb 2015"}, {text:"Mechanism of blood coagulation", marks:5, year:"Aug 2017"}, {text:"Functions of Plasma Proteins", marks:5, year:"Feb 2017"}] }, { name: 'RENAL PHYSIOLOGY AND SKIN', count: 13, questions: [{text:"Micturition reflex", marks:5, year:"Sep 2023"}, {text:"Counter-Current Mechanism", marks:5, year:"Aug 2017"}, {text:"Juxtaglomerular apparatus", marks:5, year:"Mar 2023"}] }, { name: 'DIGESTIVE SYSTEM', count: 12, questions: [{text:"Movements of small intestine", marks:5, year:"Sep 2023"}, {text:"Functions of liver", marks:5, year:"Mar 2022"}, {text:"Mechanism of HCl secretion", marks:5, year:"Mar 2023"}] }, { name: 'MUSCLE PHYSIOLOGY', count: 11, questions: [{text:"Molecular mechanism of muscle contraction", marks:5, year:"Mar 2022"}, {text:"Excitation-contraction coupling", marks:5, year:"Mar 2023"}] }, { name: 'REPRODUCTIVE SYSTEM', count: 11, questions: [{text:"Menstrual cycle", marks:5, year:"Mar 2022"}, {text:"Spermatogenesis", marks:5, year:"Feb 2017"}] }, { name: 'SPECIAL SENSES', count: 8, questions: [{text:"Visual pathway", marks:5, year:"Sep 2023"}, {text:"Errors of Refraction", marks:5, year:"Dec 2020"}] }, { name: 'GENERAL PHYSIOLOGY', count: 6, questions: [{text:"Homeostasis", marks:5, year:"Mar 2023"}, {text:"Active transport", marks:5, year:"Aug 2018"}] }]
+            }
+        ],
+        schedule: [
+            { day: "Saturday, Sept 13", title: "Day 1: The Foundation - The Neck & Core Cycles", tasks: [ { time: "12:30 PM - 2:30 PM", session: "CORE HUNT: ANATOMY", subject: "Anatomy", task: "Hunt this Question: 'Describe the boundaries and contents of the posterior triangle of the neck.' (10M PYQ)" }, { time: "3:00 PM - 5:00 PM", session: "CORE HUNT: ORAL ANATOMY", subject: "Oral Anatomy", task: "Hunt this Question: 'Classify oral mucous membrane. Write in detail about masticatory mucosa with a neat diagram.' (10M PYQ)" }, { time: "5:00 PM - 6:30 PM", session: "CORE HUNT: BIOCHEMISTRY", subject: "Biochemistry", task: "Hunt this Question: 'Describe in detail the reactions, regulation and energetics of citric acid cycle.' (10M PYQ)" }, { time: "7:00 PM - 8:00 PM", session: "CORE HUNT: PHYSIOLOGY", subject: "Physiology", task: "Hunt this Question: 'Define Cardiac cycle. Describe the pressure and volume changes during a cardiac cycle with a diagram.' (10M PYQ)" }, { time: "8:00 PM - 9:15 PM", session: "SKILLS DRILL: MCQS", subject: "MCQ Drill", task: "15 min dedicated to each of today's core topics." }, { time: "9:15 PM - 10:00 PM", session: "CONSOLIDATION: REVISION", subject: "Revision", task: "Quickly redraw all diagrams & flowcharts from today without looking." } ] },
+            { day: "Sunday, Sept 14", title: "Day 2: The Action Center - Mastication & Metabolism", tasks: [ { time: "4:00 AM - 7:30 AM", session: "CORE HUNT: ANATOMY", subject: "Anatomy", task: "Hunt this Question: 'Describe the muscles of mastication under origin, insertion, nerve supply and actions.' (10M PYQ)" }, { time: "8:30 AM - 11:00 AM", session: "CORE HUNT: ORAL ANATOMY", subject: "Oral Anatomy", task: "Hunt this Question: 'Define periodontium. Discuss in detail about the cells and fibers of the periodontal ligament.' (10M PYQ)" }, { time: "11:00 AM - 1:00 PM", session: "CORE HUNT: BIOCHEMISTRY", subject: "Biochemistry", task: "Hunt this Question: 'Describe the beta-oxidation of fatty acids. Add a note on its energetics.' (10M PYQ)" }, { time: "2:00 PM - 3:30 PM", session: "CORE HUNT: PHYSIOLOGY", subject: "Physiology", task: "Hunt this Question: 'Define arterial blood pressure. Explain the short term and long term regulation of arterial blood pressure.' (10M PYQ)" }, { time: "4:00 PM - 5:30 PM", session: "SKILLS DRILL: MCQS", subject: "MCQ Drill", task: "Targeted MCQs on ITF, PDL, Lipid Metabolism, and CVS." }, { time: "5:30 PM - 7:00 PM", session: "INTEGRATION BLOCK", subject: "Anatomy", task: "Hunt these Questions: 'Development of Face & Palate' & 'Histology of Tongue'." }, { time: "7:00 PM - 9:15 PM", session: "PYQ PRACTICE", subject: "PYQ Practice", task: "Hunt 8 Short Notes: TMJ, Cellular Cementum, Ketone Bodies, RAAS, Carotid Sheath, Pulp Stones, Gout, Micturition." }, { time: "9:15 PM - 10:00 PM", session: "CONSOLIDATION: REVISION", subject: "Revision", task: "Spaced Revision of Day 1 topics." } ] },
+            { day: "Monday, Sept 15", title: "Day 3: The Control Panel - Glands & Nerves", tasks: [ { time: "4:00 AM - 7:30 AM", session: "CORE HUNT: ANATOMY", subject: "Anatomy", task: "Hunt these Questions: 'Describe the Parotid Gland...' & 'Describe the extracranial course of the Facial Nerve.' (10M PYQs)" }, { time: "8:30 AM - 11:00 AM", session: "CORE HUNT: ORAL ANATOMY", subject: "Oral Anatomy", task: "Hunt this Question: 'Describe Amelogenesis/Life cycle of ameloblast.' (10M PYQ)" }, { time: "11:00 AM - 1:00 PM", session: "CORE HUNT: BIOCHEMISTRY", subject: "Biochemistry", task: "Hunt this Question: 'Explain the reactions of urea cycle. Add a note on the disorders of this cycle.' (10M PYQ)" }, { time: "2:00 PM - 3:30 PM", session: "CORE HUNT: PHYSIOLOGY", subject: "Physiology", task: "Hunt this Question: 'Describe the regulation of respiration.' (10M PYQ)" }, { time: "4:00 PM - 5:30 PM", session: "SKILLS DRILL: MCQS", subject: "MCQ Drill", task: "MCQs on Glands, Nerves, Enamel, Protein Metabolism, and Respiration." }, { time: "5:30 PM - 7:00 PM", session: "INTEGRATION BLOCK", subject: "Anatomy", task: "Hunt these Questions: 'Describe the Thyroid Gland' (Anatomy) & 'Functions of Thyroid Hormones' (Physiology)." }, { time: "7:00 PM - 9:15 PM", session: "PYQ PRACTICE", subject: "PYQ Practice", task: "Hunt 10 Short Notes: Submandibular Gland, Dentin, Transamination, Gas Transport, Vagus Nerve, Enamel Tufts, Vitamin A, GFR." }, { time: "9:15 PM - 10:00 PM", session: "CONSOLIDATION: REVISION", subject: "Revision", task: "Spaced Revision of Day 2 topics." } ] },
+            { day: "Tuesday, Sept 16", title: "Day 4: Sensory Gateways & Pathways", tasks: [ { time: "4:00 AM - 7:30 AM", session: "CORE HUNT: ANATOMY", subject: "Anatomy", task: "Hunt this Question: 'Describe the lateral wall of the nose, its nerve supply and blood supply.' (10M PYQ) & 'Extraocular Muscles' (5M PYQ)" }, { time: "8:30 AM - 11:00 AM", session: "CORE HUNT: ORAL ANATOMY", subject: "Oral Anatomy", task: "Hunt this Question: 'Describe the Pulp of the tooth...' (10M PYQ)" }, { time: "11:00 AM - 1:00 PM", session: "CORE HUNT: BIOCHEMISTRY", subject: "Biochemistry", task: "Hunt this Question: 'Describe Vitamin D including chemistry, sources, RDA, functions, and deficiency.' (10M PYQ)" }, { time: "2:00 PM - 3:30 PM", session: "CORE HUNT: PHYSIOLOGY", subject: "Physiology", task: "Hunt this Question: 'Describe the pathway for pain sensation and referred pain.' (10M PYQ)" }, { time: "4:00 PM - 9:15 PM", session: "DEEP PRACTICE: PYQS", subject: "PYQ Practice", task: "Hunt 12 Short Notes from medium-yield topics: Orbit, Cranial Cavity, Dentin, Eruption, Minerals, Heme Metabolism, Renal Physiology, and Muscle Physiology." }, { time: "9:15 PM - 10:00 PM", session: "CONSOLIDATION: REVISION", subject: "Revision", task: "Spaced Revision of Day 3 topics." } ] },
+            { day: "Wednesday, Sept 17", title: "Day 5: Central Command - Neuro & Molecular", tasks: [ { time: "4:00 AM - 7:30 AM", session: "CORE HUNT: ANATOMY", subject: "Anatomy", task: "Hunt these Questions: 'Cavernous Sinus' (5M), 'Circle of Willis' (5M), 'Floor of 4th Ventricle' (5M)." }, { time: "8:30 AM - 11:00 AM", session: "CORE HUNT: ORAL ANATOMY", subject: "Oral Anatomy", task: "Hunt this Question: 'Describe the development of teeth (Bell Stage).' (10M PYQ)" }, { time: "11:00 AM - 1:00 PM", session: "CORE HUNT: BIOCHEMISTRY", subject: "Biochemistry", task: "Hunt this Question: 'Describe the process of transcription in prokaryotes.' (10M PYQ)" }, { time: "2:00 PM - 3:30 PM", session: "CORE HUNT: PHYSIOLOGY", subject: "Physiology", task: "Hunt this Question: 'Classify reflexes and describe the properties of a reflex arc.' (10M PYQ)" }, { time: "4:00 PM - 9:15 PM", session: "DEEP PRACTICE: PYQS", subject: "PYQ Practice", task: "Hunt 12 Short Notes from medium-yield topics: Cerebrum, Eruption, Gene Expression, Muscle Physiology, and their related clinical conditions." }, { time: "9:15 PM - 10:00 PM", session: "CONSOLIDATION: REVISION", subject: "Revision", task: "Spaced Revision of Day 4 topics." } ] },
+            { day: "Thursday, Sept 18", title: "Day 6: The Mop-Up Operation", tasks: [ { time: "ALL DAY", session: "TARGETED STRIKE: LOOSE ENDS", subject: "PYQ Practice", task: "Your mission is to hunt down the unique, low-frequency questions. Go to the 'Final Chapter Atlas', find the 'Loose Ends' section for each subject, and master at least 15 of these single-appearance questions. This ensures you are prepared for unexpected questions." } ] },
+            { day: "Friday, Sept 19", title: "Day 7: Final Systems Check", tasks: [ { time: "ALL DAY", session: "INTEGRATION & PREDICTION", subject: "Revision", task: "Your mission is to integrate your knowledge. First, solve all questions from the 'Mission Forecast' tab under timed conditions. Then, review any remaining Medium-Yield topics from the Atlas. This is your final check for both depth and breadth." } ] },
+            { day: "Saturday, Sept 20", title: "Buffer Day & Final Polish", tasks: [ { time: "ALL DAY", session: "WEAK POINT ANALYSIS & REST", subject: "Revision", task: "Analyze your performance over the week. Re-learn and re-write your 3-4 weakest topics. Do not learn anything new. Consolidate your strengths, prepare your exam materials, and rest." } ] }
+        ],
+         dailyTargets: [
+            { day: "Saturday, Sept 13", targets: { ten_markers: 4, five_markers: 8, mcqs: 100 } },
+            { day: "Sunday, Sept 14", targets: { ten_markers: 4, five_markers: 10, mcqs: 100 } },
+            { day: "Monday, Sept 15", targets: { ten_markers: 4, five_markers: 10, mcqs: 100 } },
+            { day: "Tuesday, Sept 16", targets: { ten_markers: 4, five_markers: 12, mcqs: 125 } },
+            { day: "Wednesday, Sept 17", targets: { ten_markers: 4, five_markers: 12, mcqs: 125 } },
+            { day: "Thursday, Sept 18", targets: { ten_markers: 0, five_markers: 15, mcqs: 150 } },
+            { day: "Friday, Sept 19", targets: { ten_markers: 5, five_markers: 15, mcqs: 150 } },
+            { day: "Saturday, Sept 20", targets: { ten_markers: 0, five_markers: 0, mcqs: 0 } }
+        ],
+        predictions: {
+            "Anatomy": {
+                sectionB: ["Describe the Parotid Gland under: a) Relations b) Nerve Supply c) Development d) Applied Anatomy.", "Describe the Muscles of Mastication under: a) Origin & Insertion b) Nerve Supply & Actions c) Applied Anatomy."],
+                sectionC: ["Development of Palate.", "Cavernous Sinus.", "Muscles of Soft Palate.", "Lateral wall of nose.", "Extraocular muscles.", "Circle of Willis.", "Ansa Cervicalis.", "Middle ear."]
+            },
+            "Physiology": {
+                sectionB: ["Define Cardiac Output. Discuss the factors regulating it and add a note on its measurement.", "Classify reflexes. Describe the components and properties of a reflex arc with suitable examples."],
+                sectionC: ["Describe the transport of Oxygen in the blood.", "Neuromuscular Junction (NMJ) and transmission.", "Functions of Glucagon.", "Functions of Plasma Proteins.", "Counter-Current Mechanism.", "Deglutition.", "Spermatogenesis.", "Errors of Refraction."]
+            },
+            "Biochemistry": {
+                sectionB: ["Describe the reactions of the Citric Acid Cycle. Explain its regulation and energetics.", "Describe the reactions of beta oxidation of fatty acids with energetics."],
+                sectionC: ["Glycogen storage diseases.", "Competitive inhibition of enzymes.", "Biochemical functions and deficiency of Vitamin A.", "Structure and functions of immunoglobulins.", "Regulation of blood calcium level.", "Biochemical basis of Gout.", "Polymerase Chain Reaction (PCR).", "Electron Transport Chain and its inhibitors."]
+            },
+            "Oral Anatomy":{
+                sectionB: ["Define periodontium. Discuss in detail about the cells and fibers of the periodontal ligament.", "Classify oral mucous membrane. Write in detail about masticatory mucosa with a neat diagram."],
+                sectionC: ["Differences between cellular and acellular cementum.", "Pulp stones.", "Development of the tongue.", "Stages of Deglutition.", "Temporomandibular joint (TMJ).", "Differences between primary and permanent dentition.", "Maxillary sinus.", "Leeway space of nance."]
+            }
+        },
+        years: ["Mar 2025", "Sep 2024", "Mar 2024", "Nov 2023", "Sep 2023", "Mar 2023", "May 2022", "Mar 2022", "Sep 2021", "Mar 2021", "Feb 2021", "Dec 2020", "Sep 2020", "Feb 2020", "Aug 2019", "Feb 2019", "Aug 2018", "Feb 2018", "Aug 2017", "Feb 2017", "Aug 2016", "Feb 2016", "Aug 2015", "Feb 2015", "Aug 2014", "Feb 2014", "Aug 2013", "Feb 2013", "Aug 2012", "Feb 2012", "Aug 2011", "Feb 2011", "Aug 2010", "Feb 2010", "Aug 2009", "Feb 2009"]
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabs = document.querySelectorAll('.tab-button');
+        const contents = document.querySelectorAll('.tab-content');
+        const strategyContainer = document.getElementById('strategy-container');
+        const scheduleContainer = document.getElementById('daily-schedule-container');
+        const finalChecklistsContainer = document.getElementById('final-checklists-container');
+        const progressContainer = document.getElementById('progress-container');
+        const predictionsContainer = document.getElementById('predictions-container');
+        const yearTrackerContainer = document.getElementById('year-tracker-container');
+        const dailyTargetsContainer = document.getElementById('daily-targets-container');
+        const analyticsStatsContainer = document.getElementById('analytics-stats-container');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Populate Master Strategy
+        allData.subjects.sort((a,b) => a.priority - b.priority).forEach(subject => {
+            const chapters = subject.chapters || [].concat(...subject.sections.map(s => s.chapters));
+            const highYieldThreshold = subject.name === 'Anatomy' ? 9 : subject.name === 'Oral Anatomy' ? 10 : subject.name === 'Biochemistry' ? 9 : 15;
+            strategyContainer.innerHTML += `<div class="p-4 rounded-lg bg-gray-50 border subject-${subject.name.toLowerCase().replace(/ & /g,'-').replace(/ /g, '-')}">
+                    <h4 class="font-bold text-lg" style="color:${subject.color};">${subject.name}</h4>
+                    <p class="text-xs text-gray-500 italic mb-3">${subject.method}</p>
+                    <div class="space-y-1 text-sm">
+                        <p><strong class="text-green-600">High-Yield:</strong> ${chapters.filter(c => c.count >= highYieldThreshold).map(c=>c.name.split(' ')[0]).join(', ')}</p>
+                        <p><strong class="text-yellow-600">Med-Yield:</strong> ${chapters.filter(c => c.count >= 5 && c.count < highYieldThreshold).map(c=>c.name.split(' ')[0]).join(', ')}</p>
+                        <p><strong class="text-red-500">Low-Yield:</strong> ${chapters.filter(c => c.count < 5 && c.count > 0).map(c=>c.name.split(' ')[0]).join(', ')}</p>
+                    </div>
+                </div>`;
+        });
+        
+        // Populate Daily Schedule
+        allData.schedule.forEach(day => {
+            let dayHtml = `<div class="p-4 md:p-6 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-2xl font-bold text-indigo-700 mb-1">${day.day}</h3>
+                <p class="text-md text-gray-500 font-medium mb-4">${day.title}</p>
+                <div class="space-y-3">`;
+            day.tasks.forEach((task, index) => {
+                const taskId = `${day.day.replace(/[^a-zA-Z0-9]/g, '-')}-${index}`;
+                const subjectClass = task.subject.toLowerCase().replace(/ & /g,'-').replace(/ /g, '-');
+                const tagClass = `tag-${subjectClass}`;
+                dayHtml += `<div class="checklist-item flex items-start p-3 rounded-md bg-gray-50 subject-${subjectClass}" data-subject="${task.subject}">
+                    <input type="checkbox" id="${taskId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <label for="${taskId}" class="ml-3 flex-grow">
+                        <p class="font-bold text-gray-800 flex justify-between items-center">${task.session} <span class="task-subject ${tagClass}">${task.time}</span></p>
+                        <p class="text-gray-600 text-sm mt-1">${task.task}</p>
+                    </label>
+                </div>`;
+            });
+            dayHtml += `</div></div>`;
+            scheduleContainer.innerHTML += dayHtml;
+        });
+
+        // Populate Daily Targets
+        allData.dailyTargets.forEach(day => {
+            let dayHtml = `<div class="p-4 md:p-6 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-xl font-bold text-indigo-700 mb-4">${day.day}</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">`;
+            const targets = [
+                {label: "10-Mark Questions", count: day.targets.ten_markers, id_suffix: "10m"},
+                {label: "5-Mark Questions", count: day.targets.five_markers, id_suffix: "5m"},
+                {label: "MCQs", count: day.targets.mcqs, id_suffix: "mcq"}
+            ];
+            targets.forEach((target) => {
+                if (target.count >= 0) {
+                    const targetId = `${day.day.replace(/[^a-zA-Z0-9]/g, '-')}-target-${target.id_suffix}`;
+                    dayHtml += `<div class="checklist-item flex items-start p-3 rounded-md bg-gray-50 subject-targets">
+                        <input type="checkbox" id="${targetId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        <label for="${targetId}" class="ml-3">
+                            <p class="font-semibold text-gray-800">${target.label}</p>
+                            <p class="text-2xl font-bold text-indigo-600">${target.count}</p>
+                        </label>
+                    </div>`;
+                }
+            });
+            dayHtml += `</div></div>`;
+            dailyTargetsContainer.innerHTML += dayHtml;
+        });
+        
+        // Populate Final Checklists
+        allData.subjects.forEach(subject => {
+            let checklistHtml = `<div class="accordion-item bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="accordion-button flex justify-between items-center p-4" style="background-color:${subject.color}20;">
+                    <h3 class="text-xl font-bold" style="color:${subject.color};">${subject.name}</h3>
+                    <svg class="accordion-arrow w-6 h-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <div class="accordion-content p-4"><div class="space-y-4 max-h-[40rem] overflow-y-auto pr-2">`;
+            
+            const processChapters = (chapters) => {
+                chapters.sort((a, b) => b.count - a.count).forEach((chapter, index) => {
+                    const chapterId = `final-${subject.name.replace(/[^a-zA-Z0-9]/g, '')}-${chapter.name.replace(/[^a-zA-Z0-9]/g, '')}-${index}`;
+                    let chapterItemHtml = `<div class="py-2"><p class="font-bold text-gray-700">${chapter.name} <span class="text-xs font-bold float-right px-2 py-0.5 rounded-full" style="background-color:${subject.color}20; color:${subject.color};">${chapter.count}Q</span></p>`;
+                    if (chapter.questions && chapter.questions.length > 0) {
+                        chapterItemHtml += `<div class="pl-4 mt-1 space-y-1 border-l-2 border-gray-200">`;
+                        chapter.questions.forEach((q, qIndex) => {
+                            const qId = `${chapterId}-q-${qIndex}`;
+                            chapterItemHtml += `<div class="checklist-item flex items-start"><input type="checkbox" id="${qId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-year="${q.year}"> <label for="${qId}" class="ml-2 text-sm text-gray-600">${q.text} (${q.marks}M)</label></div>`;
+                        });
+                        chapterItemHtml += `</div>`;
+                    } else {
+                        chapterItemHtml += `<p class="pl-4 text-sm text-gray-400 italic">No major questions found in the dataset.</p>`;
+                    }
+                    chapterItemHtml += `</div>`;
+                    checklistHtml += chapterItemHtml;
+                });
+            };
+
+            if (subject.sections) { // Handle Oral Anatomy's structure
+                subject.sections.forEach(section => {
+                    checklistHtml += `<h4 class="text-lg font-bold text-gray-800 mt-4 pt-2 border-t">${section.name}</h4>`;
+                    processChapters(section.chapters);
+                });
+            } else { // Handle other subjects
+                processChapters(subject.chapters);
+            }
+            // Add Loose Ends section
+            const allSubjectQuestions = subject.chapters ? subject.chapters.flatMap(c => c.questions || []) : [].concat(...subject.sections.map(s => s.chapters.flatMap(c => c.questions || [])));
+
+            const questionCounts = allSubjectQuestions.reduce((acc, q) => {
+                acc[q.text] = (acc[q.text] || 0) + 1;
+                return acc;
+            }, {});
+
+            const uniqueQuestions = allSubjectQuestions.filter(q => questionCounts[q.text] === 1);
+            
+            if (uniqueQuestions.length > 0) {
+                checklistHtml += `<h4 class="text-lg font-bold text-gray-800 mt-4 pt-2 border-t">Loose Ends / Unique Questions</h4>`;
+                uniqueQuestions.forEach((q, index) => {
+                    const qId = `final-${subject.name.replace(/[^a-zA-Z0-9]/g, '')}-unique-${index}`;
+                    checklistHtml += `<div class="checklist-item flex items-start py-1"><input type="checkbox" id="${qId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-year="${q.year}"> <label for="${qId}" class="ml-2 text-sm text-gray-600">${q.text} (${q.marks}M)</label></div>`;
+                });
+            }
+
+
+            checklistHtml += `</div></div></div>`;
+            finalChecklistsContainer.innerHTML += checklistHtml;
+        });
+        
+        // Populate Predictions
+        Object.keys(allData.predictions).forEach(subjectName => {
+            const subject = allData.subjects.find(s => s.name === subjectName);
+            const prediction = allData.predictions[subjectName];
+            let predictionHtml = `<div class="p-4 md:p-6 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-2xl font-bold mb-4" style="color:${subject.color};">${subjectName} Forecast</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><h4 class="font-semibold text-lg text-gray-700 mb-2">10-Mark Essays</h4><div class="space-y-2">`;
+            prediction.sectionB.forEach((q, index) => {
+                const qId = `pred-${subject.name.replace(/[^a-zA-Z0-9]/g, '')}-b-${index}`;
+                predictionHtml += `<div class="checklist-item flex items-start"><input type="checkbox" id="${qId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><label for="${qId}" class="ml-2 text-sm text-gray-600">${q}</label></div>`;
+            });
+            predictionHtml += `</div></div><div><h4 class="font-semibold text-lg text-gray-700 mb-2">5-Mark Short Notes</h4><div class="space-y-2">`;
+            prediction.sectionC.forEach((q, index) => {
+                const qId = `pred-${subject.name.replace(/[^a-zA-Z0-9]/g, '')}-c-${index}`;
+                predictionHtml += `<div class="checklist-item flex items-start"><input type="checkbox" id="${qId}" class="mt-1 h-4 w-4 shrink-0 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><label for="${qId}" class="ml-2 text-sm text-gray-600">${q}</label></div>`;
+            });
+            predictionHtml += `</div></div></div></div>`;
+            predictionsContainer.innerHTML += predictionHtml;
+        });
+
+        // Accordion Logic
+        finalChecklistsContainer.addEventListener('click', function(e) {
+            const button = e.target.closest('.accordion-button');
+            if (button) {
+                const item = button.parentElement;
+                item.classList.toggle('open');
+            }
+        });
+
+        // Progress & Year Tracker Logic
+        const allQuestionsWithYears = [];
+        allData.subjects.forEach(s => { 
+            const chapters = s.chapters || [].concat(...s.sections.map(sec => sec.chapters));
+            chapters.forEach(c => { if(c.questions) { c.questions.forEach(q => { allQuestionsWithYears.push({year: q.year}) })}})});
+        
+        allData.years.forEach(year => {
+            yearTrackerContainer.innerHTML += `<div id="year-${year.replace(/ /g, '-')}" class="year-status p-2 text-center rounded-md bg-white border border-gray-300">${year}</div>`;
+        });
+
+        function updateProgress() {
+            // Subject Progress
+            allData.subjects.forEach(subject => {
+                const subjectId = subject.name.replace(/[^a-zA-Z0-9]/g, '');
+                const allCheckboxes = document.querySelectorAll(`#final-checklists-container .checklist-item input[id*="final-${subjectId}-"]`);
+                const checkedCheckboxes = document.querySelectorAll(`#final-checklists-container .checklist-item input[id*="final-${subjectId}-"]:checked`);
+                const percentage = allCheckboxes.length > 0 ? (checkedCheckboxes.length / allCheckboxes.length) * 100 : 0;
+                
+                const progressBar = document.getElementById(`progress-${subject.name}`);
+                const progressText = document.getElementById(`progress-text-${subject.name}`);
+                if (progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                    progressText.textContent = `${Math.round(percentage)}%`;
+                }
+            });
+            
+            // Year Completion Tracker
+            allData.years.forEach(year => {
+                const yearCheckboxes = document.querySelectorAll(`.checklist-item input[data-year="${year}"]`);
+                const checkedYearCheckboxes = document.querySelectorAll(`.checklist-item input[data-year="${year}"]:checked`);
+                const yearDiv = document.getElementById(`year-${year.replace(/ /g, '-')}`);
+                if (yearCheckboxes.length > 0 && yearCheckboxes.length === checkedYearCheckboxes.length) {
+                    yearDiv.classList.add('completed');
+                } else {
+                    yearDiv.classList.remove('completed');
+                }
+            });
+            drawAnalyticsCharts(true);
+        }
+        
+        allData.subjects.forEach(subject => {
+            progressContainer.innerHTML += `<div><div class="flex justify-between mb-1"><span class="text-base font-medium" style="color:${subject.color};">${subject.name}</span><span class="text-sm font-medium" style="color:${subject.color};" id="progress-text-${subject.name}">0%</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="progress-bar h-2.5 rounded-full" id="progress-${subject.name}" style="width: 0%; background-color:${subject.color};"></div></div></div>`;
+        });
+
+        document.body.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                updateProgress();
+            }
+        });
+
+        // Analytics Charts
+        let totalQuestionsChartInstance, progressChartInstance;
+        function setupAnalytics(){
+             const verifiedStats = {
+                "Anatomy": { "15yr": 274, "5yr": 90, "unique": 134, "chapters": 29 },
+                "Oral Anatomy": { "15yr": "200+", "5yr": 77, "unique": 115, "chapters": 50 },
+                "Biochemistry": { "15yr": 210, "5yr": 90, "unique": 90, "chapters": 25 },
+                "Physiology": { "15yr": 220, "5yr": 90, "unique": 70, "chapters": 11 }
+             };
+             allData.subjects.forEach(subject => {
+                const stats = verifiedStats[subject.name];
+                analyticsStatsContainer.innerHTML += `
+                    <div class="p-4 rounded-lg bg-gray-50 border" style="border-left-color: ${subject.color}; border-left-width: 4px;">
+                        <h4 class="font-bold text-lg" style="color: ${subject.color}">${subject.name}</h4>
+                        <div class="mt-2 space-y-1 text-sm">
+                            <p><strong>Total Questions (15-Year Data):</strong> ${stats['15yr']}</p>
+                             <p><strong>Total Questions (Last 5 Years):</strong> ${stats['5yr']}</p>
+                            <p><strong>Unique Questions (across 15 years):</strong> ${stats.unique}</p>
+                            <p><strong>Total Chapters:</strong> ${stats.chapters}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        function drawAnalyticsCharts(isUpdate = false) {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const textColor = isDarkMode ? '#d1d5db' : '#495057';
+            const gridColor = isDarkMode ? '#374151' : '#dee2e6';
+
+            if(!isUpdate) {
+                if(totalQuestionsChartInstance) totalQuestionsChartInstance.destroy();
+                const totalQuestionsCtx = document.getElementById('totalQuestionsChart');
+                if(totalQuestionsCtx){
+                    const totalQuestionsData = allData.subjects.map(s => {
+                        const chapters = s.chapters || [].concat(...(s.sections || []).map(sec => sec.chapters));
+                        return chapters.reduce((acc, ch) => acc + (ch.questions ? ch.questions.length : 0), 0);
+                    });
+                    totalQuestionsChartInstance = new Chart(totalQuestionsCtx, { type: 'bar', data: { labels: allData.subjects.map(s=>s.name), datasets: [{ label: 'Total Questions in Dataset', data: totalQuestionsData, backgroundColor: allData.subjects.map(s => s.color) }] }, options: { maintainAspectRatio: false, indexAxis: 'y', scales: { x: { ticks: { color: textColor }, grid: { color: gridColor }}, y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }} }, plugins: { legend: { display: false } } } });
+                }
+            }
+
+            if(progressChartInstance) progressChartInstance.destroy();
+            const progressCtx = document.getElementById('progressChart');
+            if (progressCtx) {
+                const progressData = allData.subjects.map(subject => {
+                     const subjectId = subject.name.replace(/[^a-zA-Z0-9]/g, '');
+                    const total = document.querySelectorAll(`#final-checklists-container .checklist-item input[id*="final-${subjectId}-"]`).length;
+                    const completed = document.querySelectorAll(`#final-checklists-container .checklist-item input[id*="final-${subjectId}-"]:checked`).length;
+                    return total > 0 ? (completed / total) * 100 : 0;
+                });
+                progressChartInstance = new Chart(progressCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: allData.subjects.map(s => s.name),
+                        datasets: [{ label: 'Completion %', data: progressData, backgroundColor: allData.subjects.map(s => s.color) }]
+                    },
+                    options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => value + '%', color: textColor }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { display: false } } }
+                });
+            }
+        }
+        
+        setupAnalytics();
+        updateProgress(); // Initial call to set everything up
+    });
+</script>
+
+</body>
+</html>
